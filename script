@@ -1,0 +1,267 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+ 
+local LocalPlayer = Players.LocalPlayer
+ 
+-- Configuration
+local DEFAULT_WALKSPEED = 6
+local DEFAULT_ANIMSPEED = 100
+local RTHRO_RUN_ID = "rbxassetid://2510198475"       -- Rthro Run
+-- CUSTOM_JUMP_ID is no longer used, but kept for completeness in config
+local CUSTOM_JUMP_ID = "rbxassetid://102556960451390" 
+ 
+-- State
+local isEgorMode = false
+local isFloating = false
+local currentAnimSpeed = DEFAULT_ANIMSPEED
+local currentWalkSpeed = DEFAULT_WALKSPEED
+ 
+-- UI Construction
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "EgorMenu_Ultimate" -- Updated Name
+ScreenGui.ResetOnSpawn = false
+ 
+pcall(function()
+    ScreenGui.Parent = CoreGui
+end)
+if not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+ 
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+-- INCREASED HEIGHT from 160 to 200 to fit the new button
+MainFrame.Size = UDim2.new(0, 200, 0, 200) 
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -100) -- Adjusted position to keep it centered
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+ 
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+ 
+-- Title
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+TitleLabel.BackgroundTransparency = 0.2
+TitleLabel.Text = "ULTIMATE Egor Menu" -- Updated Title Text
+TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+TitleLabel.Font = Enum.Font.FredokaOne
+TitleLabel.TextSize = 16
+TitleLabel.Parent = MainFrame
+Instance.new("UICorner", TitleLabel).CornerRadius = UDim.new(0, 10)
+ 
+-- Toggle Button
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+ToggleButton.Position = UDim2.new(0.05, 0, 0, 35)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleButton.Text = "ACTIVATE"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 14
+ToggleButton.Parent = MainFrame
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
+ 
+-- NEW: Wally West Button
+local WallyButton = Instance.new("TextButton")
+WallyButton.Size = UDim2.new(0.9, 0, 0, 35)
+WallyButton.Position = UDim2.new(0.05, 0, 0, 75) -- Positioned below Activate button
+WallyButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Gold color for Wally West
+WallyButton.Text = "Wally West Pose R15"
+WallyButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+WallyButton.Font = Enum.Font.GothamBold
+WallyButton.TextSize = 14
+WallyButton.Parent = MainFrame
+Instance.new("UICorner", WallyButton).CornerRadius = UDim.new(0, 6)
+ 
+-- Inputs
+local function createInput(yPos, defaultText, placeholder)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(0.9, 0, 0, 25)
+    box.Position = UDim2.new(0.05, 0, 0, yPos)
+    box.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    box.Text = tostring(defaultText)
+    box.PlaceholderText = placeholder
+    box.TextColor3 = Color3.fromRGB(0, 0, 0)
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 12
+    box.Parent = MainFrame
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+    return box
+end
+ 
+-- Moved Inputs down to fit the new button (120 and 155)
+local AnimSpeedInput = createInput(120, DEFAULT_ANIMSPEED, "Anim Speed")
+local WalkSpeedInput = createInput(155, DEFAULT_WALKSPEED, "Walk Speed")
+ 
+------------------------------------------------------
+-- LOGIC START
+------------------------------------------------------
+ 
+-- 1. AGGRESSIVE Override
+local function aggressiveOverride(character)
+    if not character then return end
+    local animate = character:WaitForChild("Animate", 3)
+    if not animate then return end
+ 
+    -- Function to hunt down Animation Objects and swap IDs
+    local function swapId(parentName, newId)
+        local parentObj = animate:FindFirstChild(parentName)
+        if parentObj then
+            for _, child in pairs(parentObj:GetChildren()) do
+                if child:IsA("Animation") then
+                    child.AnimationId = newId
+                end
+            end
+        end
+    end
+ 
+    -- Swap Run/Walk
+    swapId("run", RTHRO_RUN_ID)
+    swapId("walk", RTHRO_RUN_ID)
+end
+ 
+-- 2. Float Logic
+local function activateFloat(hrp)
+    if isFloating then return end
+    isFloating = true
+    
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "EgorFloat"
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.MaxForce = Vector3.new(0, math.huge, 0) 
+    bv.Parent = hrp
+    
+    task.delay(2, function()
+        if bv then bv:Destroy() end
+        isFloating = false
+    end)
+end
+ 
+-- 3. Physics Loop
+local function applyEgorPhysics()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    if not hum then return end
+ 
+    hum.WalkSpeed = currentWalkSpeed
+ 
+    local animator = hum:FindFirstChild("Animator")
+    if animator then
+        for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+            -- Apply constant animation speed to all tracks
+            pcall(function() track:AdjustSpeed(currentAnimSpeed) end)
+        end
+    end
+end
+ 
+-- 4. State Manager
+local function onStateChanged(old, new)
+    if not isEgorMode then return end
+    
+    local char = LocalPlayer.Character
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+ 
+    -- JUMP START
+    if new == Enum.HumanoidStateType.Jumping then
+        
+        -- Float Logic
+        task.spawn(function()
+            local start = tick()
+            while (tick() - start) < 1.5 do
+                RunService.Heartbeat:Wait()
+                if not hum or hum:GetState() == Enum.HumanoidStateType.Landed then break end
+                -- The float logic triggers if vertical velocity drops below 0.5 (near the peak of the jump)
+                if hrp.AssemblyLinearVelocity.Y <= 0.5 then
+                    activateFloat(hrp)
+                    break 
+                end
+            end
+        end)
+        
+    -- LANDING
+    elseif new == Enum.HumanoidStateType.Landed or new == Enum.HumanoidStateType.Running then
+        isFloating = false
+        if hrp and hrp:FindFirstChild("EgorFloat") then hrp.EgorFloat:Destroy() end
+    end
+end
+ 
+-- 5. Toggles & Connections
+local connection
+local stateConnection
+ 
+local function toggleEgor()
+    isEgorMode = not isEgorMode
+    
+    if isEgorMode then
+        ToggleButton.Text = "ON"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        
+        local char = LocalPlayer.Character
+        
+        aggressiveOverride(char)   
+        
+        connection = RunService.RenderStepped:Connect(applyEgorPhysics)
+        
+        local hum = char and char:FindFirstChild("Humanoid")
+        if hum then
+            stateConnection = hum.StateChanged:Connect(onStateChanged)
+        end
+ 
+    else
+        ToggleButton.Text = "OFF"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        
+        if connection then connection:Disconnect() end
+        if stateConnection then stateConnection:Disconnect() end
+        
+        -- Cleanup
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16
+            local animator = hum:FindFirstChild("Animator")
+            if animator then
+                for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+                    track:AdjustSpeed(1)
+                end
+            end
+        end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:FindFirstChild("EgorFloat") then hrp.EgorFloat:Destroy() end
+    end
+end
+ 
+ToggleButton.MouseButton1Click:Connect(toggleEgor)
+ 
+-- 6. Wally West Button Logic
+WallyButton.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Fe-wally-west-r15-50410"))()
+end)
+ 
+-- Input Listeners
+AnimSpeedInput.FocusLost:Connect(function()
+    local n = tonumber(AnimSpeedInput.Text)
+    if n then currentAnimSpeed = n end
+end)
+WalkSpeedInput.FocusLost:Connect(function()
+    local n = tonumber(WalkSpeedInput.Text)
+    if n then currentWalkSpeed = n end
+end)
+ 
+-- Respawn Fix
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    if isEgorMode then
+        task.wait(0.5)
+        aggressiveOverride(newChar)
+        local hum = newChar:WaitForChild("Humanoid")
+        if stateConnection then stateConnection:Disconnect() end
+        stateConnection = hum.StateChanged:Connect(onStateChanged)
+    end
+end)
