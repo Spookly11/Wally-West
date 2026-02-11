@@ -242,7 +242,7 @@ ToggleButton.MouseButton1Click:Connect(toggleEgor)
  
 -- 6. Wally West Button Logic
 WallyButton.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Spookly11/Sound-Holder/refs/heads/main/Wally"))()
+    loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Fe-wally-west-r15-50410"))()
 end)
  
 -- Input Listeners
