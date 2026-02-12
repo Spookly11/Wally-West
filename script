@@ -9,7 +9,7 @@ local DEFAULT_WALKSPEED = 6
 local DEFAULT_ANIMSPEED = 100
 local RTHRO_RUN_ID = "rbxassetid://2510198475"       -- Rthro Run
 -- CUSTOM_JUMP_ID is no longer used, but kept for completeness in config
-local CUSTOM_JUMP_ID = "rbxassetid://102556960451390" 
+local CUSTOM_JUMP_ID = "rbxassetid://126189114863512" 
  
 -- State
 local isEgorMode = false
